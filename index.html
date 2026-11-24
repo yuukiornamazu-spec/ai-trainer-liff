@@ -371,12 +371,19 @@
 
         <div id="gymFinishBox" style="display:none;">
           <div class="card-title">✅ ジム結果の記録</div>
+
+          <div id="gymProposedWrap" style="display:none;background:#F3F4F6;border-radius:10px;padding:12px;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;">📋 提案されたメニュー</div>
+            <div id="gymProposedMenu" style="font-size:12px;line-height:1.5;color:#4B5563;white-space:pre-wrap;max-height:160px;overflow-y:auto;"></div>
+          </div>
+
           <label>本日の実績</label>
           <div class="chip-row" id="gymResChips">
             <button type="button" class="chip selected" onclick="selectChip('gymResChips', this, '提案通り')">提案通り</button>
+            <button type="button" class="chip" onclick="copyProposedMenuToResult(this)">メニューを転記して編集</button>
             <button type="button" class="chip" onclick="selectChip('gymResChips', this, '有酸素だけ少し短めにした')">有酸素短め</button>
           </div>
-          <textarea id="gymResultText" style="margin-top:8px;">提案通り</textarea>
+          <textarea id="gymResultText" style="margin-top:8px;min-height:120px;">提案通り</textarea>
           <button class="btn-primary" onclick="submitGymFinish()">結果を記録する</button>
         </div>
       </div>
@@ -537,6 +544,7 @@
     let selectedBase64 = null;
     let selectedMime = "image/jpeg";
     let isSubmitting = false;
+    let latestGymMenu = "";
 
     function showLoading(title, sub) {
       isSubmitting = true;
@@ -621,6 +629,18 @@
       if (groupId === "homeTypeChips") document.getElementById("homeWorkoutType").value = val;
       if (groupId === "homeVideoChips") document.getElementById("homeVideoPref").value = val;
       if (groupId === "homeResChips") document.getElementById("homeResultText").value = val;
+    }
+
+    function copyProposedMenuToResult(el) {
+      if (!latestGymMenu) {
+        showToast("提案されたメニューが見つかりません");
+        return;
+      }
+      document.querySelectorAll("#gymResChips .chip").forEach(c => c.classList.remove("selected"));
+      el.classList.add("selected");
+      const area = document.getElementById("gymResultText");
+      area.value = latestGymMenu;
+      area.focus();
     }
 
     function setGymMode(mode) {
@@ -721,6 +741,13 @@
     async function loadMyPageData() {
       const res = await postToGas({ action: "get_mypage" });
       if (!res || !res.ok || !res.profile) return;
+
+      latestGymMenu = res.latestGymMenu || "";
+      if (latestGymMenu) {
+        document.getElementById("gymProposedMenu").textContent = latestGymMenu;
+        document.getElementById("gymProposedWrap").style.display = "block";
+      }
+
       const p = res.profile;
       document.getElementById("mpName").value = p.name;
       document.getElementById("mpHeight").value = p.height;
