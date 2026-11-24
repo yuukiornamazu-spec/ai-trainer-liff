@@ -237,6 +237,55 @@
       from { transform: scale(0.95); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
+    /* 全画面ローディングオーバーレイ */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.82);
+      backdrop-filter: blur(3px);
+      z-index: 150;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .loading-overlay.show {
+      display: flex;
+    }
+    .loading-box {
+      background: #FFFFFF;
+      border-radius: 18px;
+      padding: 26px 22px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+      animation: popIn 0.18s ease-out;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid #E5E7EB;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin 0.85s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 8px;
+    }
+    .loading-sub {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--sub);
+      margin: 0;
+    }
     .toast {
       position: fixed;
       bottom: 20px;
@@ -248,7 +297,7 @@
       border-radius: 12px;
       font-size: 13px;
       font-weight: 600;
-      z-index: 100;
+      z-index: 200;
       display: none;
       max-width: 90%;
       text-align: center;
@@ -470,6 +519,15 @@
     </div>
   </div>
 
+  <!-- ==================== 全画面ローディング（AI回答中表示） ==================== -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <p class="loading-title" id="loadingTitle">AIが回答を作成中...</p>
+      <p class="loading-sub" id="loadingSub">完了するとLINEに返信が届き、この画面は自動で閉じます。</p>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -478,6 +536,19 @@
     let currentUserId = "";
     let selectedBase64 = null;
     let selectedMime = "image/jpeg";
+    let isSubmitting = false;
+
+    function showLoading(title, sub) {
+      isSubmitting = true;
+      document.getElementById("loadingTitle").textContent = title || "AIが回答を作成中...";
+      document.getElementById("loadingSub").textContent = sub || "完了するとLINEに返信が届き、この画面は自動で閉じます。";
+      document.getElementById("loadingOverlay").classList.add("show");
+    }
+
+    function hideLoading() {
+      isSubmitting = false;
+      document.getElementById("loadingOverlay").classList.remove("show");
+    }
 
     function getQueryParam(key) {
       const params = new URLSearchParams(window.location.search);
@@ -689,14 +760,13 @@
     }
 
     async function submitMeal() {
+      if (isSubmitting) return;
       const text = document.getElementById("mealText").value.trim();
       if (!text && !selectedBase64) {
         showToast("写真か食事内容のどちらかを入力してください！");
         return;
       }
-      const btn = document.getElementById("btnMealSubmit");
-      btn.disabled = true;
-      btn.textContent = "カロリーを計算中...";
+      showLoading("🍽️ 食事のカロリーを計算中...", "AIが写真・内容を解析してLINEに返信します。数秒お待ちください。");
       try {
         const res = await postToGas({
           action: "meal_log",
@@ -704,72 +774,107 @@
           base64Image: selectedBase64,
           mimeType: selectedMime
         });
+        hideLoading();
         if (res && res.ok) {
           closeOrNotify(res.message);
         } else {
           showToast((res && res.message) || "送信に失敗しました");
         }
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "この内容で食事を報告する";
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
       }
     }
 
     async function submitGymStart() {
-      showToast("ジムメニューを作成しています...");
-      const res = await postToGas({
-        action: "gym_start",
-        condition: document.getElementById("gymCondition").value,
-        extraEquipment: document.getElementById("gymExtraEquip").value
-      });
-      if (res && res.ok) closeOrNotify(res.message);
+      if (isSubmitting) return;
+      showLoading("🏋️ 本日のジムメニューを作成中...", "体調と前回までの履歴からメニューを組み立てています。");
+      try {
+        const res = await postToGas({
+          action: "gym_start",
+          condition: document.getElementById("gymCondition").value,
+          extraEquipment: document.getElementById("gymExtraEquip").value
+        });
+        hideLoading();
+        if (res && res.ok) closeOrNotify(res.message);
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
+      }
     }
 
     async function submitGymFinish() {
-      showToast("結果を記録しています...");
-      const res = await postToGas({
-        action: "gym_finish",
-        resultText: document.getElementById("gymResultText").value
-      });
-      if (res && res.ok) closeOrNotify(res.message);
+      if (isSubmitting) return;
+      showLoading("✅ ジム結果を記録・評価中...", "AIがフィードバックを作成してLINEに送信します。");
+      try {
+        const res = await postToGas({
+          action: "gym_finish",
+          resultText: document.getElementById("gymResultText").value
+        });
+        hideLoading();
+        if (res && res.ok) closeOrNotify(res.message);
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
+      }
     }
 
     async function submitHomeStart() {
-      showToast("宅トレメニューを作成しています...");
-      const res = await postToGas({
-        action: "home_start",
-        condition: document.getElementById("homeCondition").value,
-        workoutType: document.getElementById("homeWorkoutType").value,
-        goalAmount: document.getElementById("homeGoalAmount").value,
-        videoPref: document.getElementById("homeVideoPref").value
-      });
-      if (res && res.ok) closeOrNotify(res.message);
+      if (isSubmitting) return;
+      showLoading("🏠 宅トレメニューを作成中...", "体調・お気に入り・目標に合わせて提案を作成しています。");
+      try {
+        const res = await postToGas({
+          action: "home_start",
+          condition: document.getElementById("homeCondition").value,
+          workoutType: document.getElementById("homeWorkoutType").value,
+          goalAmount: document.getElementById("homeGoalAmount").value,
+          videoPref: document.getElementById("homeVideoPref").value
+        });
+        hideLoading();
+        if (res && res.ok) closeOrNotify(res.message);
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
+      }
     }
 
     async function submitHomeFinish() {
-      showToast("結果を記録しています...");
-      const res = await postToGas({
-        action: "home_finish",
-        resultText: document.getElementById("homeResultText").value
-      });
-      if (res && res.ok) closeOrNotify(res.message);
+      if (isSubmitting) return;
+      showLoading("✅ 宅トレ結果を記録・評価中...", "AIがフィードバックを作成してLINEに送信します。");
+      try {
+        const res = await postToGas({
+          action: "home_finish",
+          resultText: document.getElementById("homeResultText").value
+        });
+        hideLoading();
+        if (res && res.ok) closeOrNotify(res.message);
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
+      }
     }
 
     async function submitWeeklyReport() {
-      showToast("週次データを更新しています...");
-      const res = await postToGas({
-        action: "weekly_report",
-        weight: document.getElementById("wkWeight").value,
-        restingKcal: document.getElementById("wkResting").value,
-        activeKcal: document.getElementById("wkActive").value
-      });
-      if (res && res.ok) closeOrNotify(res.message);
+      if (isSubmitting) return;
+      showLoading("📅 週次データを更新中...", "体重と消費カロリーを記録し、AIからフィードバックを送信します。");
+      try {
+        const res = await postToGas({
+          action: "weekly_report",
+          weight: document.getElementById("wkWeight").value,
+          restingKcal: document.getElementById("wkResting").value,
+          activeKcal: document.getElementById("wkActive").value
+        });
+        hideLoading();
+        if (res && res.ok) closeOrNotify(res.message);
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
+      }
     }
 
     async function submitWeeklyReportFromModal() {
-      const btn = document.getElementById("btnModalWeeklySubmit");
-      btn.disabled = true;
-      btn.textContent = "送信中...";
+      if (isSubmitting) return;
+      showLoading("📅 週次データを更新中...", "体重と消費カロリーを記録し、AIからフィードバックを送信します。");
       try {
         const res = await postToGas({
           action: "weekly_report",
@@ -777,40 +882,55 @@
           restingKcal: document.getElementById("modalWkResting").value,
           activeKcal: document.getElementById("modalWkActive").value
         });
+        hideLoading();
         if (res && res.ok) {
           closeWeeklyModal();
           closeOrNotify(res.message);
         } else {
           showToast((res && res.message) || "送信に失敗しました");
         }
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "週次データを送信する";
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
       }
     }
 
     async function submitMyPageUpdate() {
-      showToast("プロフィールを保存しています...");
-      const res = await postToGas({
-        action: "update_mypage",
-        name: document.getElementById("mpName").value,
-        height: document.getElementById("mpHeight").value,
-        currentWeight: document.getElementById("mpWeight").value,
-        equipment: document.getElementById("mpEquipment").value,
-        favorites: document.getElementById("mpFavorites").value
-      });
-      if (res && res.ok) closeOrNotify(res.message);
+      if (isSubmitting) return;
+      showLoading("👤 プロフィールを保存中...", "設定をスプレッドシートへ反映しています。");
+      try {
+        const res = await postToGas({
+          action: "update_mypage",
+          name: document.getElementById("mpName").value,
+          height: document.getElementById("mpHeight").value,
+          currentWeight: document.getElementById("mpWeight").value,
+          equipment: document.getElementById("mpEquipment").value,
+          favorites: document.getElementById("mpFavorites").value
+        });
+        hideLoading();
+        if (res && res.ok) closeOrNotify(res.message);
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
+      }
     }
 
     async function submitGoalUpdate() {
-      showToast("目標を保存しています...");
-      const res = await postToGas({
-        action: "update_goal",
-        targetWeight: document.getElementById("goalWeight").value,
-        goalItem: document.getElementById("goalItem").value,
-        targetDate: document.getElementById("goalDate").value
-      });
-      if (res && res.ok) closeOrNotify(res.message);
+      if (isSubmitting) return;
+      showLoading("🎯 目標を保存中...", "新しい目標をスプレッドシートへ反映しています。");
+      try {
+        const res = await postToGas({
+          action: "update_goal",
+          targetWeight: document.getElementById("goalWeight").value,
+          goalItem: document.getElementById("goalItem").value,
+          targetDate: document.getElementById("goalDate").value
+        });
+        hideLoading();
+        if (res && res.ok) closeOrNotify(res.message);
+      } catch (e) {
+        hideLoading();
+        showToast("送信に失敗しました");
+      }
     }
 
     function showToast(msg) {
