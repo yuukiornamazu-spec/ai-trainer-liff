@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AIパーソナルトレーナー</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    :root {
+      --primary: #06C755;
+      --primary-dark: #05a847;
+      --bg: #F4F6F9;
+      --card: #FFFFFF;
+      --text: #1F2937;
+      --sub: #6B7280;
+      --border: #E5E7EB;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 40px;
+    }
+    .header {
+      background: #1F2937;
+      color: #fff;
+      padding: 14px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .user-badge {
+      font-size: 11px;
+      background: rgba(255,255,255,0.15);
+      padding: 4px 9px;
+      border-radius: 12px;
+      font-weight: 500;
+      max-width: 62%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tabs {
+      display: none;
+    }
+    .container {
+      padding: 14px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #374151;
+      margin: 12px 0 6px;
+    }
+    label:first-of-type { margin-top: 0; }
+    .hint {
+      font-size: 11px;
+      color: var(--sub);
+      margin-top: 4px;
+    }
+    input[type="text"], input[type="number"], input[type="date"], select, textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: #F9FAFB;
+      color: var(--text);
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      background: #fff;
+    }
+    textarea { resize: vertical; min-height: 76px; }
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .chip {
+      border: 1.5px solid var(--border);
+      background: #fff;
+      border-radius: 18px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+    }
+    .chip.selected {
+      border-color: var(--primary);
+      background: #ECFDF5;
+      color: #065F46;
+    }
+    .sub-switch {
+      display: flex;
+      background: #E5E7EB;
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 14px;
+    }
+    .sub-switch button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      color: #4B5563;
+      cursor: pointer;
+    }
+    .sub-switch button.active {
+      background: #fff;
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .photo-box {
+      border: 2px dashed #CBD5E1;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      background: #F8FAFC;
+      cursor: pointer;
+      position: relative;
+    }
+    .photo-box input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    #mealPreview {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      margin-top: 10px;
+      display: none;
+    }
+    .btn-primary {
+      width: 100%;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-top: 16px;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(6, 199, 85, 0.25);
+    }
+    .btn-primary:disabled {
+      background: #9CA3AF;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      width: 100%;
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 8px;
+      cursor: pointer;
+    }
+    .status-pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-weight: 700;
+    }
+    .status-pending { background: #FEF3C7; color: #92400E; }
+    .status-done { background: #D1FAE5; color: #065F46; }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111827;
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 100;
+      display: none;
+      max-width: 90%;
+      text-align: center;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-title">
+      <span>💪 AIパーソナルトレーナー</span>
+      <span class="user-badge" id="userBadge">読込中...</span>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn" data-tab="meal" onclick="switchTab('meal')">🍽️ 食事報告</button>
+      <button class="tab-btn" data-tab="gym" onclick="switchTab('gym')">🏋️ ジム</button>
+      <button class="tab-btn" data-tab="home" onclick="switchTab('home')">🏠 宅トレ</button>
+      <button class="tab-btn" data-tab="mypage" onclick="switchTab('mypage')">👤 マイページ</button>
+      <button class="tab-btn" data-tab="goal" onclick="switchTab('goal')">🎯 目標確認</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- ==================== 1. 食事報告タブ ==================== -->
+    <div id="panel-meal" class="panel">
+      <div class="card">
+        <div class="card-title">🍽️ 食事報告（写真・文章どちらでもOK）</div>
+        <p class="hint" style="margin-top:0;">写真だけ・文章だけ・写真＋補足メモのどれでも一品ずつカロリー計算してLINEに返信します。</p>
+
+        <label>📸 食事の写真（任意）</label>
+        <div class="photo-box">
+          <input type="file" id="mealFile" accept="image/*" onchange="handleImageSelect(event)">
+          <div id="photoPlaceholder">タップしてカメラ撮影・アルバムから選択</div>
+          <img id="mealPreview" alt="プレビュー">
+        </div>
+        <button type="button" id="clearPhotoBtn" class="btn-secondary" style="display:none;" onclick="clearPhoto()">写真を外す</button>
+
+        <label>✍️ 食事の内容・補足メモ（任意）</label>
+        <textarea id="mealText" placeholder="例：トースト1枚とゆで卵、カフェラテ&#10;例：ご飯は半分残した、朝なし など"></textarea>
+
+        <button class="btn-primary" id="btnMealSubmit" onclick="submitMeal()">この内容で食事を報告する</button>
+      </div>
+    </div>
+
+    <!-- ==================== 2. ジムタブ ==================== -->
+    <div id="panel-gym" class="panel">
+      <div class="card">
+        <div class="sub-switch">
+          <button id="gymModeStartBtn" class="active" onclick="setGymMode('start')">これからジム行く</button>
+          <button id="gymModeFinishBtn" onclick="setGymMode('finish')">ジム終わった（結果報告）</button>
+        </div>
+
+        <div id="gymStartBox">
+          <div class="card-title">🏋️ 本日のジムメニュー作成</div>
+          <label>今日の体調・気になる部位</label>
+          <div class="chip-row" id="gymCondChips">
+            <button type="button" class="chip selected" onclick="selectChip('gymCondChips', this, 'なし')">なし（元気）</button>
+            <button type="button" class="chip" onclick="selectChip('gymCondChips', this, '生理中')">生理中</button>
+            <button type="button" class="chip" onclick="selectChip('gymCondChips', this, '筋肉痛あり')">筋肉痛あり</button>
+            <button type="button" class="chip" onclick="selectChip('gymCondChips', this, '少し疲れ気味')">少し疲れ気味</button>
+          </div>
+          <input type="text" id="gymCondition" value="なし" placeholder="自由入力もOK（例：肩が少し張っている）" style="margin-top:8px;">
+
+          <label>いつもと違うジムの場合の器具（任意）</label>
+          <input type="text" id="gymExtraEquip" placeholder="いつものジムと同じなら空欄でOK">
+
+          <button class="btn-primary" onclick="submitGymStart()">ジムメニューを提案してもらう</button>
+        </div>
+
+        <div id="gymFinishBox" style="display:none;">
+          <div class="card-title">✅ ジム結果の記録</div>
+          <label>本日の実績</label>
+          <div class="chip-row" id="gymResChips">
+            <button type="button" class="chip selected" onclick="selectChip('gymResChips', this, '提案通り')">提案通り</button>
+            <button type="button" class="chip" onclick="selectChip('gymResChips', this, '有酸素だけ少し短めにした')">有酸素短め</button>
+          </div>
+          <textarea id="gymResultText" style="margin-top:8px;">提案通り</textarea>
+          <button class="btn-primary" onclick="submitGymFinish()">結果を記録する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 3. 宅トレタブ ==================== -->
+    <div id="panel-home" class="panel">
+      <div class="card">
+        <div class="sub-switch">
+          <button id="homeModeStartBtn" class="active" onclick="setHomeMode('start')">これから宅トレする</button>
+          <button id="homeModeFinishBtn" onclick="setHomeMode('finish')">宅トレ終わり（結果報告）</button>
+        </div>
+
+        <div id="homeStartBox">
+          <div class="card-title">🏠 宅トレメニュー提案</div>
+
+          <label>今日の体調</label>
+          <input type="text" id="homeCondition" value="なし" placeholder="例：なし、生理中、肩こり気味">
+
+          <label>やりたい種類</label>
+          <div class="chip-row" id="homeTypeChips">
+            <button type="button" class="chip selected" onclick="selectChip('homeTypeChips', this, '有酸素ダンス・脂肪燃焼')">有酸素ダンス</button>
+            <button type="button" class="chip" onclick="selectChip('homeTypeChips', this, 'ピラティス')">ピラティス</button>
+            <button type="button" class="chip" onclick="selectChip('homeTypeChips', this, 'ストレッチ・骨盤ケア')">ストレッチ</button>
+            <button type="button" class="chip" onclick="selectChip('homeTypeChips', this, '自重筋トレ')">自重筋トレ</button>
+          </div>
+          <input type="text" id="homeWorkoutType" value="有酸素ダンス・脂肪燃焼" style="margin-top:8px;">
+
+          <label>目安（消費カロリー または 時間）</label>
+          <input type="text" id="homeGoalAmount" placeholder="例：200kcal消費したい / 15分くらい">
+
+          <label>やり方の希望</label>
+          <div class="chip-row" id="homeVideoChips">
+            <button type="button" class="chip selected" onclick="selectChip('homeVideoChips', this, '指定なし（両方提案）')">指定なし（両方）</button>
+            <button type="button" class="chip" onclick="selectChip('homeVideoChips', this, 'YouTubeで')">YouTubeで</button>
+            <button type="button" class="chip" onclick="selectChip('homeVideoChips', this, '動画なしで')">動画なしで</button>
+          </div>
+          <input type="hidden" id="homeVideoPref" value="指定なし（両方提案）">
+
+          <button class="btn-primary" onclick="submitHomeStart()">宅トレメニューを提案してもらう</button>
+        </div>
+
+        <div id="homeFinishBox" style="display:none;">
+          <div class="card-title">✅ 宅トレ結果の記録</div>
+          <label>本日の実績</label>
+          <div class="chip-row" id="homeResChips">
+            <button type="button" class="chip selected" onclick="selectChip('homeResChips', this, '提案通り')">提案通り</button>
+            <button type="button" class="chip" onclick="selectChip('homeResChips', this, '1本目だけやった')">1本目だけやった</button>
+          </div>
+          <textarea id="homeResultText" style="margin-top:8px;">提案通り</textarea>
+          <button class="btn-primary" onclick="submitHomeFinish()">結果を記録する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 4. マイページタブ ==================== -->
+    <div id="panel-mypage" class="panel">
+      <div class="card">
+        <div class="card-title">
+          📅 今週の体重・消費カロリー報告
+          <span id="weeklyStatusBadge" class="status-pill status-pending">確認中</span>
+        </div>
+        <p class="hint" style="margin-top:0;">入力すると、食事報告で「1日の残りカロリー目安」の差し引き計算が有効になります。</p>
+
+        <label>現在の体重（kg）</label>
+        <input type="number" step="0.1" id="wkWeight" placeholder="例：62.4">
+
+        <label>安静時消費カロリー・週平均（kcal）</label>
+        <input type="number" id="wkResting" placeholder="例：1420">
+
+        <label>アクティブ消費カロリー・週平均（kcal）</label>
+        <input type="number" id="wkActive" placeholder="例：450">
+
+        <button class="btn-primary" onclick="submitWeeklyReport()">週次データを送信する</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👤 プロフィール・器具・お気に入り設定</div>
+
+        <label>名前（ニックネーム）</label>
+        <input type="text" id="mpName">
+
+        <label>身長（cm）</label>
+        <input type="number" step="0.1" id="mpHeight">
+
+        <label>現在の体重（kg）</label>
+        <input type="number" step="0.1" id="mpWeight">
+
+        <label>いつものジムにある器具</label>
+        <textarea id="mpEquipment" placeholder="例：レッグプレス、ラットプルダウン、ランニングマシン"></textarea>
+
+        <label>お気に入り宅トレYouTube（チャンネル名・URL）</label>
+        <textarea id="mpFavorites" placeholder="例：竹脇まりな（有酸素ダンス）&#10;のがちゃんねる（ピラティス）"></textarea>
+
+        <button class="btn-secondary" style="background:#1F2937;color:#fff;border:none;padding:13px;" onclick="submitMyPageUpdate()">プロフィール設定を保存する</button>
+      </div>
+    </div>
+
+    <!-- ==================== 5. 目標確認/再設定タブ ==================== -->
+    <div id="panel-goal" class="panel">
+      <div class="card">
+        <div class="card-title">🎯 現在の目標確認・再設定</div>
+        <p class="hint" style="margin-top:0;">現在の目標を確認し、必要に応じていつでも書き換えて保存できます。</p>
+
+        <label>目標体重（kg）</label>
+        <input type="number" step="0.1" id="goalWeight" placeholder="例：58.0">
+
+        <label>改善したいこと</label>
+        <input type="text" id="goalItem" placeholder="例：猫背改善、二の腕引き締め">
+
+        <label>達成目標日</label>
+        <input type="date" id="goalDate">
+
+        <button class="btn-primary" onclick="submitGoalUpdate()">この目標で保存する</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const GAS_EXEC_URL = "https://script.google.com/macros/s/AKfycbxoJCTFjztpraEnOrCat6Wlm-pnCxSCgFwCEQCuweE_CdBADyI_JIo0OddLa1tp98G3vg/exec";
+    const LIFF_ID = "2012781380-Aa29hyAG";
+    let currentUserId = "";
+    let selectedBase64 = null;
+    let selectedMime = "image/jpeg";
+
+    function resolveInitialTab() {
+      const params = new URLSearchParams(window.location.search);
+      let tab = params.get("tab");
+
+      if (!tab && params.get("liff.state")) {
+        const stateStr = decodeURIComponent(params.get("liff.state"));
+        const qIndex = stateStr.indexOf("?");
+        if (qIndex !== -1) {
+          const stateParams = new URLSearchParams(stateStr.slice(qIndex + 1));
+          tab = stateParams.get("tab");
+        }
+      }
+
+      return tab || "meal";
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      switchTab(resolveInitialTab());
+      await initLiffAndProfile();
+    });
+
+    async function initLiffAndProfile() {
+      const badge = document.getElementById("userBadge");
+      try {
+        badge.textContent = "LIFF接続中...";
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+          badge.textContent = "ログイン中...";
+          liff.login();
+          return;
+        }
+
+        badge.textContent = "プロフィール取得中...";
+        const profile = await liff.getProfile();
+        currentUserId = profile.userId;
+
+        if (currentUserId) {
+          badge.textContent = "連携済";
+          await loadMyPageData();
+        } else {
+          badge.textContent = "ID取得不可";
+        }
+      } catch (err) {
+        console.error(err);
+        const detail = (err && (err.message || err.code)) ? (err.message || err.code) : String(err);
+        badge.textContent = "err:" + detail;
+      }
+    }
+
+    function switchTab(tabName) {
+      const valid = ["meal", "gym", "home", "mypage", "goal"];
+      const target = valid.includes(tabName) ? tabName : "meal";
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === target);
+      });
+      document.querySelectorAll(".panel").forEach(p => {
+        p.classList.toggle("active", p.id === "panel-" + target);
+      });
+    }
+
+    function selectChip(groupId, el, val) {
+      document.querySelectorAll("#" + groupId + " .chip").forEach(c => c.classList.remove("selected"));
+      el.classList.add("selected");
+      if (groupId === "gymCondChips") document.getElementById("gymCondition").value = val;
+      if (groupId === "gymResChips") document.getElementById("gymResultText").value = val;
+      if (groupId === "homeTypeChips") document.getElementById("homeWorkoutType").value = val;
+      if (groupId === "homeVideoChips") document.getElementById("homeVideoPref").value = val;
+      if (groupId === "homeResChips") document.getElementById("homeResultText").value = val;
+    }
+
+    function setGymMode(mode) {
+      document.getElementById("gymModeStartBtn").classList.toggle("active", mode === "start");
+      document.getElementById("gymModeFinishBtn").classList.toggle("active", mode === "finish");
+      document.getElementById("gymStartBox").style.display = mode === "start" ? "block" : "none";
+      document.getElementById("gymFinishBox").style.display = mode === "finish" ? "block" : "none";
+    }
+
+    function setHomeMode(mode) {
+      document.getElementById("homeModeStartBtn").classList.toggle("active", mode === "start");
+      document.getElementById("homeModeFinishBtn").classList.toggle("active", mode === "finish");
+      document.getElementById("homeStartBox").style.display = mode === "start" ? "block" : "none";
+      document.getElementById("homeFinishBox").style.display = mode === "finish" ? "block" : "none";
+    }
+
+    function handleImageSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const maxW = 1024;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxW) {
+            h = Math.round(h * (maxW / w));
+            w = maxW;
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          selectedBase64 = dataUrl.split(",")[1];
+          selectedMime = "image/jpeg";
+
+          const prev = document.getElementById("mealPreview");
+          prev.src = dataUrl;
+          prev.style.display = "block";
+          document.getElementById("photoPlaceholder").textContent = "写真を変更する";
+          document.getElementById("clearPhotoBtn").style.display = "block";
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearPhoto() {
+      selectedBase64 = null;
+      document.getElementById("mealFile").value = "";
+      document.getElementById("mealPreview").style.display = "none";
+      document.getElementById("photoPlaceholder").textContent = "タップしてカメラ撮影・アルバムから選択";
+      document.getElementById("clearPhotoBtn").style.display = "none";
+    }
+
+    async function postToGas(payload) {
+      if (!currentUserId) {
+        showToast("LINEアカウントと連携できていません（LIFF設定を確認してください）");
+        return null;
+      }
+      payload.sourceType = "liff";
+      payload.userId = currentUserId;
+
+      try {
+        const res = await fetch(GAS_EXEC_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        return await res.json();
+      } catch (err) {
+        console.error(err);
+        showToast("通信エラーが発生しました");
+        return null;
+      }
+    }
+
+    async function loadMyPageData() {
+      const res = await postToGas({ action: "get_mypage" });
+      if (!res || !res.ok || !res.profile) return;
+      const p = res.profile;
+      document.getElementById("mpName").value = p.name;
+      document.getElementById("mpHeight").value = p.height;
+      document.getElementById("mpWeight").value = p.currentWeight;
+      document.getElementById("mpEquipment").value = p.equipment;
+      document.getElementById("mpFavorites").value = p.favorites;
+
+      document.getElementById("wkWeight").value = p.currentWeight;
+      document.getElementById("wkResting").value = p.restingKcal;
+      document.getElementById("wkActive").value = p.activeKcal;
+
+      document.getElementById("goalWeight").value = p.targetWeight;
+      document.getElementById("goalItem").value = p.goalItem;
+      document.getElementById("goalDate").value = p.targetDate;
+
+      const badge = document.getElementById("weeklyStatusBadge");
+      if (p.weeklyStatus === "未報告") {
+        badge.textContent = "今週未報告";
+        badge.className = "status-pill status-pending";
+      } else {
+        badge.textContent = "報告済";
+        badge.className = "status-pill status-done";
+      }
+    }
+
+    function closeOrNotify(msg) {
+      showToast(msg);
+      setTimeout(() => {
+        if (typeof liff !== "undefined" && liff.isInClient()) {
+          liff.closeWindow();
+        }
+      }, 1100);
+    }
+
+    async function submitMeal() {
+      const text = document.getElementById("mealText").value.trim();
+      if (!text && !selectedBase64) {
+        showToast("写真か食事内容のどちらかを入力してください！");
+        return;
+      }
+      const btn = document.getElementById("btnMealSubmit");
+      btn.disabled = true;
+      btn.textContent = "カロリーを計算中...";
+      try {
+        const res = await postToGas({
+          action: "meal_log",
+          mealText: text,
+          base64Image: selectedBase64,
+          mimeType: selectedMime
+        });
+        if (res && res.ok) {
+          closeOrNotify(res.message);
+        } else {
+          showToast((res && res.message) || "送信に失敗しました");
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "この内容で食事を報告する";
+      }
+    }
+
+    async function submitGymStart() {
+      showToast("ジムメニューを作成しています...");
+      const res = await postToGas({
+        action: "gym_start",
+        condition: document.getElementById("gymCondition").value,
+        extraEquipment: document.getElementById("gymExtraEquip").value
+      });
+      if (res && res.ok) closeOrNotify(res.message);
+    }
+
+    async function submitGymFinish() {
+      showToast("結果を記録しています...");
+      const res = await postToGas({
+        action: "gym_finish",
+        resultText: document.getElementById("gymResultText").value
+      });
+      if (res && res.ok) closeOrNotify(res.message);
+    }
+
+    async function submitHomeStart() {
+      showToast("宅トレメニューを作成しています...");
+      const res = await postToGas({
+        action: "home_start",
+        condition: document.getElementById("homeCondition").value,
+        workoutType: document.getElementById("homeWorkoutType").value,
+        goalAmount: document.getElementById("homeGoalAmount").value,
+        videoPref: document.getElementById("homeVideoPref").value
+      });
+      if (res && res.ok) closeOrNotify(res.message);
+    }
+
+    async function submitHomeFinish() {
+      showToast("結果を記録しています...");
+      const res = await postToGas({
+        action: "home_finish",
+        resultText: document.getElementById("homeResultText").value
+      });
+      if (res && res.ok) closeOrNotify(res.message);
+    }
+
+    async function submitWeeklyReport() {
+      showToast("週次データを更新しています...");
+      const res = await postToGas({
+        action: "weekly_report",
+        weight: document.getElementById("wkWeight").value,
+        restingKcal: document.getElementById("wkResting").value,
+        activeKcal: document.getElementById("wkActive").value
+      });
+      if (res && res.ok) closeOrNotify(res.message);
+    }
+
+    async function submitMyPageUpdate() {
+      showToast("プロフィールを保存しています...");
+      const res = await postToGas({
+        action: "update_mypage",
+        name: document.getElementById("mpName").value,
+        height: document.getElementById("mpHeight").value,
+        currentWeight: document.getElementById("mpWeight").value,
+        equipment: document.getElementById("mpEquipment").value,
+        favorites: document.getElementById("mpFavorites").value
+      });
+      if (res && res.ok) closeOrNotify(res.message);
+    }
+
+    async function submitGoalUpdate() {
+      showToast("目標を保存しています...");
+      const res = await postToGas({
+        action: "update_goal",
+        targetWeight: document.getElementById("goalWeight").value,
+        goalItem: document.getElementById("goalItem").value,
+        targetDate: document.getElementById("goalDate").value
+      });
+      if (res && res.ok) closeOrNotify(res.message);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 2800);
+    }
+  </script>
+</body>
+</html>
