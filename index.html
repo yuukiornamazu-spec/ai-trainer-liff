@@ -428,12 +428,20 @@
 
         <div id="homeFinishBox" style="display:none;">
           <div class="card-title">✅ 宅トレ結果の記録</div>
+
+          <div id="homeProposedWrap" style="display:none;background:#F3F4F6;border-radius:10px;padding:12px;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;">📋 提案されたメニュー</div>
+            <div id="homeProposedMenu" style="font-size:12px;line-height:1.5;color:#4B5563;white-space:pre-wrap;max-height:160px;overflow-y:auto;"></div>
+          </div>
+
           <label>本日の実績</label>
           <div class="chip-row" id="homeResChips">
             <button type="button" class="chip selected" onclick="selectChip('homeResChips', this, '提案通り')">提案通り</button>
+            <button type="button" class="chip" onclick="copyProposedMenuToHomeResult(this)">メニューを転記して編集</button>
+            <button type="button" class="chip" onclick="appendFavoritesToHomeResult()">＋お気に入りを追記</button>
             <button type="button" class="chip" onclick="selectChip('homeResChips', this, '1本目だけやった')">1本目だけやった</button>
           </div>
-          <textarea id="homeResultText" style="margin-top:8px;">提案通り</textarea>
+          <textarea id="homeResultText" style="margin-top:8px;min-height:120px;">提案通り</textarea>
           <button class="btn-primary" onclick="submitHomeFinish()">結果を記録する</button>
         </div>
       </div>
@@ -643,6 +651,30 @@
       area.focus();
     }
 
+    function copyProposedMenuToHomeResult(el) {
+      if (!latestGymMenu) {
+        showToast("提案されたメニューが見つかりません");
+        return;
+      }
+      document.querySelectorAll("#homeResChips .chip").forEach(c => c.classList.remove("selected"));
+      el.classList.add("selected");
+      const area = document.getElementById("homeResultText");
+      area.value = latestGymMenu;
+      area.focus();
+    }
+
+    function appendFavoritesToHomeResult() {
+      const favs = document.getElementById("mpFavorites").value.trim();
+      if (!favs) {
+        showToast("マイページにお気に入りが登録されていません");
+        return;
+      }
+      const area = document.getElementById("homeResultText");
+      const current = area.value.trim();
+      area.value = current ? `${current}\n\n【追加したお気に入り】\n${favs}` : favs;
+      area.focus();
+    }
+
     function setGymMode(mode) {
       document.getElementById("gymModeStartBtn").classList.toggle("active", mode === "start");
       document.getElementById("gymModeFinishBtn").classList.toggle("active", mode === "finish");
@@ -746,6 +778,8 @@
       if (latestGymMenu) {
         document.getElementById("gymProposedMenu").textContent = latestGymMenu;
         document.getElementById("gymProposedWrap").style.display = "block";
+        document.getElementById("homeProposedMenu").textContent = latestGymMenu;
+        document.getElementById("homeProposedWrap").style.display = "block";
       }
 
       const p = res.profile;
