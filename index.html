@@ -191,6 +191,18 @@
       box-shadow: none;
       cursor: not-allowed;
     }
+    .btn-fav {
+      width: 100%;
+      background: #FEF3C7;
+      color: #92400E;
+      border: 1.5px solid #F59E0B;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 10px;
+      cursor: pointer;
+    }
     .btn-secondary {
       width: 100%;
       background: #F3F4F6;
@@ -237,7 +249,6 @@
       from { transform: scale(0.95); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
-    /* 全画面ローディングオーバーレイ */
     .loading-overlay {
       display: none;
       position: fixed;
@@ -366,15 +377,17 @@
           <label>いつもと違うジムの場合の器具（任意）</label>
           <input type="text" id="gymExtraEquip" placeholder="いつものジムと同じなら空欄でOK">
 
-          <button class="btn-primary" onclick="submitGymStart()">ジムメニューを提案してもらう</button>
+          <button class="btn-primary" onclick="submitGymStart(false)">ジムメニューを提案してもらう</button>
+          <button type="button" class="btn-fav" onclick="submitGymStart(true)">⭐ お気に入りメニューを実施したい</button>
         </div>
 
         <div id="gymFinishBox" style="display:none;">
           <div class="card-title">✅ ジム結果の記録</div>
 
           <div id="gymProposedWrap" style="display:none;background:#F3F4F6;border-radius:10px;padding:12px;margin-bottom:12px;">
-            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;">📋 提案されたメニュー</div>
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;">📋 提案されたジムメニュー</div>
             <div id="gymProposedMenu" style="font-size:12px;line-height:1.5;color:#4B5563;white-space:pre-wrap;max-height:160px;overflow-y:auto;"></div>
+            <button type="button" class="btn-secondary" style="background:#FEF3C7;color:#92400E;border-color:#F59E0B;margin-top:10px;" onclick="saveFavoriteMenu('gym')">⭐ このメニューをお気に入りに追加</button>
           </div>
 
           <label>本日の実績</label>
@@ -423,22 +436,23 @@
           </div>
           <input type="hidden" id="homeVideoPref" value="指定なし（両方提案）">
 
-          <button class="btn-primary" onclick="submitHomeStart()">宅トレメニューを提案してもらう</button>
+          <button class="btn-primary" onclick="submitHomeStart(false)">宅トレメニューを提案してもらう</button>
+          <button type="button" class="btn-fav" onclick="submitHomeStart(true)">⭐ お気に入りメニューを実施したい</button>
         </div>
 
         <div id="homeFinishBox" style="display:none;">
           <div class="card-title">✅ 宅トレ結果の記録</div>
 
           <div id="homeProposedWrap" style="display:none;background:#F3F4F6;border-radius:10px;padding:12px;margin-bottom:12px;">
-            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;">📋 提案されたメニュー</div>
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;">📋 提案された宅トレメニュー</div>
             <div id="homeProposedMenu" style="font-size:12px;line-height:1.5;color:#4B5563;white-space:pre-wrap;max-height:160px;overflow-y:auto;"></div>
+            <button type="button" class="btn-secondary" style="background:#FEF3C7;color:#92400E;border-color:#F59E0B;margin-top:10px;" onclick="saveFavoriteMenu('home')">⭐ このメニューをお気に入りに追加</button>
           </div>
 
           <label>本日の実績</label>
           <div class="chip-row" id="homeResChips">
             <button type="button" class="chip selected" onclick="selectChip('homeResChips', this, '提案通り')">提案通り</button>
             <button type="button" class="chip" onclick="copyProposedMenuToHomeResult(this)">メニューを転記して編集</button>
-            <button type="button" class="chip" onclick="appendFavoritesToHomeResult()">＋お気に入りを追記</button>
             <button type="button" class="chip" onclick="selectChip('homeResChips', this, '1本目だけやった')">1本目だけやった</button>
           </div>
           <textarea id="homeResultText" style="margin-top:8px;min-height:120px;">提案通り</textarea>
@@ -483,7 +497,10 @@
         <label>いつものジムにある器具</label>
         <textarea id="mpEquipment" placeholder="例：レッグプレス、ラットプルダウン、ランニングマシン"></textarea>
 
-        <label>お気に入り宅トレYouTube（チャンネル名・URL）</label>
+        <label>お気に入りジムメニュー</label>
+        <textarea id="mpGymFavorites" placeholder="ジム終了画面の「お気に入りに追加」から自動登録もできます"></textarea>
+
+        <label>お気に入り宅トレ（YouTubeチャンネル・URL・メニュー）</label>
         <textarea id="mpFavorites" placeholder="例：竹脇まりな（有酸素ダンス）&#10;のがちゃんねる（ピラティス）"></textarea>
 
         <button class="btn-secondary" style="background:#1F2937;color:#fff;border:none;padding:13px;" onclick="submitMyPageUpdate()">プロフィール設定を保存する</button>
@@ -553,6 +570,7 @@
     let selectedMime = "image/jpeg";
     let isSubmitting = false;
     let latestGymMenu = "";
+    let latestHomeMenu = "";
 
     function showLoading(title, sub) {
       isSubmitting = true;
@@ -564,6 +582,50 @@
     function hideLoading() {
       isSubmitting = false;
       document.getElementById("loadingOverlay").classList.remove("show");
+    }
+
+    // 提案文から「メニュー部分のみ」を抽出（挨拶・ポイント・理由を除外）
+    function extractMenuOnly(fullText, type) {
+      if (!fullText) return "";
+      const lines = fullText.split(/\r?\n/);
+      const result = [];
+      let skipPointBlock = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        const line = raw.trim();
+        if (!line) continue;
+
+        // ポイント・アドバイス・締めセクションに入ったらスキップ
+        if (/^(💡|⚠️|※|【?(ポイント|アドバイス|注意点|メモ|次回|応援|クールダウンのポイント)|いってらっしゃい|無理せず|終わったら|頑張って|応援して)/.test(line)) {
+          if (/ポイント|アドバイス|注意点/.test(line)) skipPointBlock = true;
+          continue;
+        }
+        // 新しい見出しが来たらスキップ解除
+        if (/^(📺|🧘|🏋️|🏃|【|■|▼|###)/.test(line)) {
+          skipPointBlock = false;
+        }
+        if (skipPointBlock) continue;
+
+        if (type === "home") {
+          // 宅トレ：おすすめ理由の括弧行は除外
+          if (/^[（(].+[）)]$/.test(line)) continue;
+          // 箇条書き・番号付き・URL・セクション見出しを残す
+          if (/^(📺|🧘|【|\d+\.|・|\*|-|•|https?:\/\/)/.test(line)) {
+            result.push(line.replace(/^\*\*\s*|\s*\*\*$/g, ""));
+          }
+        } else {
+          // ジム：ポイント行を除外し、箇条書き・番号付き・種目見出しを残す
+          if (/(ポイント|コツ|意識して|呼吸を止めず|フォームを|無理せず|レベルアップ|前回クリア)/.test(line) && !/(kg|回|セット|分|km)/i.test(line)) {
+            continue;
+          }
+          if (/^(・|\*|-|•|\d+\.|【|■|▼|🏋️|🏃)/.test(line)) {
+            result.push(line.replace(/^[\*\-•]\s*/, "・").replace(/\*\*/g, ""));
+          }
+        }
+      }
+
+      return result.length > 0 ? result.join("\n") : fullText;
     }
 
     function getQueryParam(key) {
@@ -641,38 +703,58 @@
 
     function copyProposedMenuToResult(el) {
       if (!latestGymMenu) {
-        showToast("提案されたメニューが見つかりません");
+        showToast("提案されたジムメニューが見つかりません");
         return;
       }
       document.querySelectorAll("#gymResChips .chip").forEach(c => c.classList.remove("selected"));
       el.classList.add("selected");
       const area = document.getElementById("gymResultText");
-      area.value = latestGymMenu;
+      area.value = extractMenuOnly(latestGymMenu, "gym");
       area.focus();
     }
 
     function copyProposedMenuToHomeResult(el) {
-      if (!latestGymMenu) {
-        showToast("提案されたメニューが見つかりません");
+      if (!latestHomeMenu) {
+        showToast("提案された宅トレメニューが見つかりません");
         return;
       }
       document.querySelectorAll("#homeResChips .chip").forEach(c => c.classList.remove("selected"));
       el.classList.add("selected");
       const area = document.getElementById("homeResultText");
-      area.value = latestGymMenu;
+      area.value = extractMenuOnly(latestHomeMenu, "home");
       area.focus();
     }
 
-    function appendFavoritesToHomeResult() {
-      const favs = document.getElementById("mpFavorites").value.trim();
-      if (!favs) {
-        showToast("マイページにお気に入りが登録されていません");
+    async function saveFavoriteMenu(type) {
+      if (isSubmitting) return;
+      const rawMenu = type === "gym" ? latestGymMenu : latestHomeMenu;
+      const menuOnly = extractMenuOnly(rawMenu, type);
+      if (!menuOnly) {
+        showToast("登録できるメニューが見つかりません");
         return;
       }
-      const area = document.getElementById("homeResultText");
-      const current = area.value.trim();
-      area.value = current ? `${current}\n\n【追加したお気に入り】\n${favs}` : favs;
-      area.focus();
+      showLoading("⭐ お気に入りに登録中...", "次回のメニュー提案ですぐ呼び出せるように保存しています。");
+      try {
+        const res = await postToGas({
+          action: "save_favorite_menu",
+          type: type,
+          menuText: menuOnly
+        });
+        hideLoading();
+        if (res && res.ok) {
+          if (type === "gym") {
+            document.getElementById("mpGymFavorites").value = res.updatedFavorites || "";
+          } else {
+            document.getElementById("mpFavorites").value = res.updatedFavorites || "";
+          }
+          showToast(res.message);
+        } else {
+          showToast((res && res.message) || "登録に失敗しました");
+        }
+      } catch (e) {
+        hideLoading();
+        showToast("登録に失敗しました");
+      }
     }
 
     function setGymMode(mode) {
@@ -776,9 +858,13 @@
 
       latestGymMenu = res.latestGymMenu || "";
       if (latestGymMenu) {
-        document.getElementById("gymProposedMenu").textContent = latestGymMenu;
+        document.getElementById("gymProposedMenu").textContent = extractMenuOnly(latestGymMenu, "gym");
         document.getElementById("gymProposedWrap").style.display = "block";
-        document.getElementById("homeProposedMenu").textContent = latestGymMenu;
+      }
+
+      latestHomeMenu = res.latestHomeMenu || "";
+      if (latestHomeMenu) {
+        document.getElementById("homeProposedMenu").textContent = extractMenuOnly(latestHomeMenu, "home");
         document.getElementById("homeProposedWrap").style.display = "block";
       }
 
@@ -788,6 +874,7 @@
       document.getElementById("mpWeight").value = p.currentWeight;
       document.getElementById("mpEquipment").value = p.equipment;
       document.getElementById("mpFavorites").value = p.favorites;
+      document.getElementById("mpGymFavorites").value = p.gymFavorites || "";
 
       document.getElementById("wkWeight").value = p.currentWeight;
       document.getElementById("wkResting").value = p.restingKcal;
@@ -847,17 +934,25 @@
       }
     }
 
-    async function submitGymStart() {
+    async function submitGymStart(useFavorite = false) {
       if (isSubmitting) return;
-      showLoading("🏋️ 本日のジムメニューを作成中...", "体調と前回までの履歴からメニューを組み立てています。");
+      showLoading(
+        useFavorite ? "⭐ お気に入りジムメニューを準備中..." : "🏋️ 本日のジムメニューを作成中...",
+        useFavorite ? "登録済みのお気に入りメニューを今日の体調に合わせて調整しています。" : "体調・目標日からの逆算・履歴からメニューを組み立てています。"
+      );
       try {
         const res = await postToGas({
           action: "gym_start",
           condition: document.getElementById("gymCondition").value,
-          extraEquipment: document.getElementById("gymExtraEquip").value
+          extraEquipment: document.getElementById("gymExtraEquip").value,
+          useFavorite: useFavorite
         });
         hideLoading();
-        if (res && res.ok) closeOrNotify(res.message);
+        if (res && res.ok) {
+          closeOrNotify(res.message);
+        } else {
+          showToast((res && res.message) || "送信に失敗しました");
+        }
       } catch (e) {
         hideLoading();
         showToast("送信に失敗しました");
@@ -880,19 +975,27 @@
       }
     }
 
-    async function submitHomeStart() {
+    async function submitHomeStart(useFavorite = false) {
       if (isSubmitting) return;
-      showLoading("🏠 宅トレメニューを作成中...", "体調・お気に入り・目標に合わせて提案を作成しています。");
+      showLoading(
+        useFavorite ? "⭐ お気に入り宅トレを準備中..." : "🏠 宅トレメニューを作成中...",
+        useFavorite ? "登録済みのお気に入り宅トレを今日の体調に合わせて呼び出しています。" : "体調・目標日からの逆算・お気に入りに合わせて提案を作成しています。"
+      );
       try {
         const res = await postToGas({
           action: "home_start",
           condition: document.getElementById("homeCondition").value,
           workoutType: document.getElementById("homeWorkoutType").value,
           goalAmount: document.getElementById("homeGoalAmount").value,
-          videoPref: document.getElementById("homeVideoPref").value
+          videoPref: document.getElementById("homeVideoPref").value,
+          useFavorite: useFavorite
         });
         hideLoading();
-        if (res && res.ok) closeOrNotify(res.message);
+        if (res && res.ok) {
+          closeOrNotify(res.message);
+        } else {
+          showToast((res && res.message) || "送信に失敗しました");
+        }
       } catch (e) {
         hideLoading();
         showToast("送信に失敗しました");
@@ -966,7 +1069,8 @@
           height: document.getElementById("mpHeight").value,
           currentWeight: document.getElementById("mpWeight").value,
           equipment: document.getElementById("mpEquipment").value,
-          favorites: document.getElementById("mpFavorites").value
+          favorites: document.getElementById("mpFavorites").value,
+          gymFavorites: document.getElementById("mpGymFavorites").value
         });
         hideLoading();
         if (res && res.ok) closeOrNotify(res.message);
